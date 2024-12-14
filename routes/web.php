@@ -29,11 +29,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/lobbies', [LobbyController::class, 'store']);
     Route::get('/api/lobbies', [LobbyController::class, 'index'])->name('lobbies.index')->middleware(['auth', 'verified']);
     Route::get('/api/lobbies/{lobby}', [LobbyController::class, 'show'])->name('lobby.show');
-    Route::get('/api/lobbies/{lobby}/leave', [LobbyController::class, 'leave']);
-    Route::delete('/api/lobbies/delete-by-creator', [LobbyController::class, 'deleteByUser']);
     Route::post('/lobbies/{lobbyId}/join', [LobbyController::class, 'joinLobby']);
+    Route::post('/api/lobbies/{lobbyId}/leave', [LobbyController::class, 'leaveLobby']);
+
+
+
+
+
+
+    //nejiet route ;/
 
     Route::get('/api/lobbies/find-by-code/{code}', [LobbyController::class, 'findByCode']);
+    Route::delete('/api/lobbies/delete-by-creator', [LobbyController::class, 'deleteByUser']);
 
 });
 

@@ -55,4 +55,9 @@ class Lobby extends Model
                     ->withPivot('status') // if you want to store additional fields like 'status'
                     ->withTimestamps();
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'lobby_user')->withPivot('status')->withTimestamps();
+    }
 }

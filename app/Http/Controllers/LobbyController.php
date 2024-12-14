@@ -52,16 +52,39 @@ class LobbyController extends Controller
         ]);
     }
 
-    public function show($id)
-    {
-        // Find the lobby with its creator
-        $lobby = Lobby::with('players')->findOrFail($id);
+public function show($id)
+{
+    // Find the lobby with its creator and players using eager loading
+    $lobby = Lobby::with(['creator', 'users'])->findOrFail($id); // Eager load creator and users (players)
 
-        return Inertia::render('LobbyPage', [
-            'lobby' => $lobby,
-        ]);
-                // return response()->json($lobby);
-    }
+    // Prepare the lobby details
+    $lobbyDetails = [
+        'id' => $lobby->id,
+        'name' => $lobby->name,
+        'code' => $lobby->code,
+        'max_players' => $lobby->max_players,
+        'current_players' => $lobby->current_players, // Explicitly return current_players
+        'game_ranking' => $lobby->game_ranking,
+        'creator_id' => $lobby->creator_id,
+        'creator' => [
+            'id' => $lobby->creator->id,
+            'name' => $lobby->creator->name,
+        ],
+        'players' => $lobby->users->map(function ($player) use ($lobby) {
+            return [
+                'id' => $player->id,
+                'name' => $player->name,
+                'status' => $player->pivot->status ?? 'Waiting', // Handle player status from the pivot table
+                'is_host' => $player->id === $lobby->creator_id, // Check if the player is the host
+            ];
+        }),
+    ];
+
+    // Return the lobby details to the Inertia.js frontend
+    return Inertia::render('LobbyPage', [
+        'lobby' => $lobbyDetails,
+    ]);
+}
 
     public function findByCode($code)
     {
@@ -91,12 +114,12 @@ class LobbyController extends Controller
     }
 
 
-    public function joinLobby($lobbyId)
+public function joinLobby($lobbyId)
 {
     // Get the current user
     $user = auth()->user();
     
-    // Find the lobby
+    // Find the new lobby
     $lobby = Lobby::findOrFail($lobbyId);
 
     // Check if the lobby is full
@@ -108,10 +131,22 @@ class LobbyController extends Controller
     \DB::beginTransaction();
 
     try {
-        // Increment the current players count
+        // First, remove the user from any previous lobby they are part of
+        $previousLobby = \DB::table('lobby_user')->where('user_id', $user->id)->first();
+
+        if ($previousLobby) {
+            // Decrement the current_players count for the previous lobby
+            $previousLobby = Lobby::find($previousLobby->lobby_id);
+            $previousLobby->decrement('current_players');
+        }
+
+        // Increment the current_players count for the new lobby
         $lobby->increment('current_players');
 
-        // Add the user to the lobby_user table
+        // Remove the user from any old lobby (if they were in one)
+        \DB::table('lobby_user')->where('user_id', $user->id)->delete();
+
+        // Add the user to the new lobby_user table
         \DB::table('lobby_user')->insert([
             'lobby_id' => $lobby->id,
             'user_id' => $user->id,
@@ -130,5 +165,64 @@ class LobbyController extends Controller
         return response()->json(['message' => 'Failed to join the lobby'], 500);
     }
 }
+
+
+
+    public function leaveLobby($lobbyId)
+    {
+        // Get the current user
+        $user = auth()->user();
+        
+        // Find the lobby
+        $lobby = Lobby::findOrFail($lobbyId);
+
+        // Start a transaction to ensure data consistency
+        \DB::beginTransaction();
+
+        try {
+            // Remove the user from the lobby_user pivot table
+            $removedRows = \DB::table('lobby_user')
+                ->where('lobby_id', $lobby->id)
+                ->where('user_id', $user->id)
+                ->delete();
+
+            // Decrement the current players count
+            $lobby->decrement('current_players');
+
+            // If the lobby becomes empty, you might want to delete the lobby
+            // Alternatively, you could check if the current user was the creator
+            if ($lobby->creator_id === $user->id) {
+                // If the creator leaves, you might want to choose a new creator 
+                // or mark the lobby for deletion
+                $nextCreator = \DB::table('lobby_user')
+                    ->where('lobby_id', $lobby->id)
+                    ->first();
+
+                if ($nextCreator) {
+                    $lobby->creator_id = $nextCreator->user_id;
+                    $lobby->save();
+                } else {
+                    // If no other players, delete the lobby
+                    $lobby->delete();
+                }
+            }
+
+            // Commit the transaction
+            \DB::commit();
+
+            return response()->json([
+                'message' => 'Successfully left the lobby',
+                'removedRows' => $removedRows
+            ], 200);
+        } catch (\Exception $e) {
+            // Rollback the transaction if something goes wrong
+            \DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to leave the lobby',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
 }

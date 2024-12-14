@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Users, LogOut, UserPlus, Copy, Trophy, Settings, CheckCircle2, XCircle } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { Users, LogOut, UserPlus, Copy, Trophy,User, Settings, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { router } from '@inertiajs/react';
 
 export default function LobbyPage({ lobby, auth }) {
     const [copied, setCopied] = useState(false);
-    const [players, setPlayers] = useState([]); // Ensure players is an array
+    const [players, setPlayers] = useState([]); // Initialize as an empty array
     const [inviteEmail, setInviteEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     // Fetch participants when the component mounts
     useEffect(() => {
         const fetchPlayers = async () => {
             try {
+                // Fetch the lobby data including players from the API
                 const response = await axios.get(`/api/lobbies/${lobby.id}`);
-                // Make sure response.data.players exists and is an array
-                if (Array.isArray(response.data.players)) {
-                    setPlayers(response.data.players);
-                } else {
-                    setPlayers([]); // Default to empty array if players data is malformed
-                }
+                setPlayers(response.data.players); // Set players from API response
             } catch (error) {
                 console.error('Error fetching players:', error);
             }
@@ -28,6 +26,26 @@ export default function LobbyPage({ lobby, auth }) {
         fetchPlayers();
     }, [lobby.id]);
 
+    useEffect(() => {
+        const intervalId = setInterval(handleRefresh, 2222); // Refresh every 2 seconds
+
+        return () => {
+            clearInterval(intervalId); // Cleanup on component unmount
+        };
+    }, []);
+const handleRefresh = async () => {
+    try {
+        // Atsvaidzināt datus par lobby bez lapas pārlādēšanas
+        await router.visit(window.location.href, {
+            method: 'get',
+            only: ['lobby'], // Atsvaidzināt tikai "lobbies" datus
+            preserveState: true, // Saglabāt lapas stāvokli (t.i., tas neizmantos jaunu URL)
+            replace: true, // Aizvietot URL, lai saglabātu pašreizējo lapu
+        });
+    } catch (error) {
+        console.error('Error refreshing this lobby:', error);
+    }
+};
     const copyLobbyCode = () => {
         navigator.clipboard.writeText(lobby.code);
         setCopied(true);
@@ -39,19 +57,16 @@ export default function LobbyPage({ lobby, auth }) {
         try {
             await axios.post(`/api/lobbies/${lobby.id}/invite`, { email: inviteEmail });
             setInviteEmail('');
-            // Add success notification logic here
         } catch (error) {
-            // Add error handling logic here
+            console.error('Error inviting player:', error);
         }
     };
 
     const leaveLobby = async () => {
         try {
             await axios.post(`/api/lobbies/${lobby.id}/leave`);
-            // Redirect to lobbies page or show a modal
             window.location.href = '/api/lobbies';
         } catch (error) {
-            // Add error handling logic
             console.error('Error leaving lobby:', error);
         }
     };
@@ -63,7 +78,7 @@ export default function LobbyPage({ lobby, auth }) {
             className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 relative"
         >
             <div className="container mx-auto px-4 py-8 max-w-6xl">
-                <Head title={`Lobby: ${lobby.name}`} />
+                <Head title={`Lobby`} />
 
                 {/* Lobby Header */}
                 <motion.div 
@@ -117,7 +132,7 @@ export default function LobbyPage({ lobby, auth }) {
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold flex items-center">
                                 <Users className="mr-2 text-gray-500" />
-                                Players ({players.length}/{lobby.max_players})
+                                Players ({lobby.current_players}/{lobby.max_players})
                             </h2>
                             <motion.button 
                                 whileHover={{ scale: 1.1 }}
@@ -127,31 +142,39 @@ export default function LobbyPage({ lobby, auth }) {
                             </motion.button>
                         </div>
                         <div className="space-y-4">
-                            {players.map((player) => (
-                                <motion.div 
-                                    key={player.id}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="flex justify-between items-center bg-gray-50 p-3 rounded-xl"
-                                >
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                            {player.name.charAt(0).toUpperCase()}
+                            {lobby.current_players > lobby.max_players ? (
+                                
+                                players.map((player) => (
+                                    <motion.div 
+                                        key={player.id}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        className="flex justify-between items-center bg-gray-50 p-3 rounded-xl"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                                {player.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium">{player.name}</p>
+                                                <p className="text-sm text-gray-500">
+                                                    {player.status || 'Waiting'}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-medium">{player.name}</p>
-                                            <p className="text-sm text-gray-500">
-                                                {player.status || 'Waiting'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {player.id === lobby.creator_id && (
-                                        <span className="bg-green-50 text-green-600 px-2 py-1 rounded-full text-xs">
-                                            Host
-                                        </span>
-                                    )}
-                                </motion.div>
-                            ))}
+                                        {player.id === lobby.creator_id && (
+                                            <span className="bg-green-50 text-green-600 px-2 py-1 rounded-full text-xs">
+                                                Host
+                                            </span>
+                                        )}
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div>
+            
+                                <p> <User /> No players yet</p>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
 

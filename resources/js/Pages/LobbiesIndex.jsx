@@ -24,6 +24,15 @@ export default function LobbiesIndex({ auth, lobbies }) {
         setLobbiesData(lobbies.data || []); 
     }, [lobbies]);
 
+
+    useEffect(() => {
+        const intervalId = setInterval(handleRefresh, 15000); // Refresh every 2 seconds
+
+        return () => {
+            clearInterval(intervalId); // Cleanup on component unmount
+        };
+    }, []);
+
     const handleRefresh = async () => {
         setIsLoading(true);
         try {
