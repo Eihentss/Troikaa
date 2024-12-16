@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\LobbyController;
+use App\Http\Controllers\ChatController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -42,10 +43,8 @@ Route::middleware('auth')->group(function () {
 
 
 
-    
-    Route::post('/lobbies/{lobbyId}/chat', [ChatController::class, 'sendMessage']);
-    Route::get('/lobbies/{lobbyId}/chat-history', [ChatController::class, 'getChatHistory']);
-
+    Route::get('/api/lobbies/{lobby}/chat-history', [LobbyController::class, 'getChatHistory']);
+    Route::post('/api/lobbies/{lobby}/chat', [LobbyController::class, 'sendMessage']);
 
     //nejiet route ;/
 

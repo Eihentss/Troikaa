@@ -39,13 +39,13 @@ export default function LobbyPage({ lobby, auth }) {
         };
 
         fetchPlayers();
-        const intervalId = setInterval(fetchPlayers, 5000);
+        const intervalId = setInterval(fetchPlayers, 55555000);
 
         return () => clearInterval(intervalId);
     }, [lobby.id, auth.user.id]);
 
     useEffect(() => {
-        const intervalId = setInterval(handleRefresh, 2222); // Refresh every 2 seconds
+        const intervalId = setInterval(handleRefresh, 2222222); // Refresh every 2 seconds
 
         return () => {
             clearInterval(intervalId); // Cleanup on component unmount
@@ -119,7 +119,6 @@ const toggleReadyStatus = async () => {
             className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 relative"
         >
             <div className="container mx-auto px-4 py-8 max-w-6xl">
-                <ChatComponent lobby={lobby} auth={auth} />
                 <Head title={`Lobby`} />
 
                 {/* Lobby Header */}
@@ -262,6 +261,8 @@ const toggleReadyStatus = async () => {
                                 Start Game
                             </motion.button>
                         )}
+                                        <ChatComponent lobby={lobby} auth={auth} />
+
                     </motion.div>
                 </div>
             </div>

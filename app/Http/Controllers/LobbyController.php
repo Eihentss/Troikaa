@@ -7,6 +7,7 @@ use App\Models\Lobby;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use App\Models\ChatMessage; // Correct namespace
 class LobbyController extends Controller
 {
     public function store(Request $request)
@@ -273,6 +274,32 @@ public function toggleReadyStatus($lobbyId)
         // Start a transaction to create the game
         DB::beginTransaction();
     }
+    public function getChatHistory($lobbyId)
+    {
+        $messages = ChatMessage::where('lobby_id', $lobbyId)
+            ->with('user')
+            ->latest()
+            ->take(50)
+            ->get();
 
+        return response()->json($messages);
+    }
+
+    public function sendMessage(Request $request, $lobbyId)
+    {
+        $validatedData = $request->validate([
+            'message' => 'required|string|max:60'
+        ]);
+
+        $message = ChatMessage::create([
+            'lobby_id' => $lobbyId,
+            'user_id' => auth()->id(),
+            'message' => $validatedData['message']
+        ]);
+
+        broadcast(new ChatMessageSent($message))->toOthers();
+
+        return response()->json($message, 201);
+    }
 
 }

@@ -13,8 +13,8 @@ const ChatComponent = ({ lobby, auth }) => {
         window.Pusher = Pusher;
         window.Echo = new Echo({
             broadcaster: 'pusher',
-            key: process.env.MIX_PUSHER_APP_KEY,
-            cluster: process.env.MIX_PUSHER_APP_CLUSTER,
+            key: import.meta.env.VITE_PUSHER_APP_KEY,
+            cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
             forceTLS: true
         });
 
@@ -60,7 +60,7 @@ const ChatComponent = ({ lobby, auth }) => {
     };
 
     return (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-lg p-6 h-[500px] flex flex-col">
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-lg p-6 h-[300px] flex flex-col">
             <div className="flex-grow overflow-y-auto mb-4 space-y-3 pr-2">
                 {messages.map((msg, index) => (
                     <div 

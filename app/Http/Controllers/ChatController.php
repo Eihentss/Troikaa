@@ -1,42 +1,38 @@
 <?php
+namespace App\Http\Controllers\Api;
 
-namespace App\Http\Controllers;
-
+use App\Http\Controllers\Controller;
 use App\Events\ChatMessageSent;
+use App\Models\ChatMessage;
 use Illuminate\Http\Request;
-use App\Models\LobbyMessage;
 
 class ChatController extends Controller
 {
-    public function sendMessage(Request $request, $lobbyId)
-    {
-        $validated = $request->validate([
-            'message' => 'required|string|max:500'
-        ]);
-
-        $user = auth()->user();
-
-        // Save message to database
-        $chatMessage = LobbyMessage::create([
-            'lobby_id' => $lobbyId,
-            'user_id' => $user->id,
-            'message' => $validated['message']
-        ]);
-
-        // Broadcast message
-        broadcast(new ChatMessageSent($validated['message'], $user, $lobbyId));
-
-        return response()->json(['status' => 'Message sent']);
-    }
-
     public function getChatHistory($lobbyId)
     {
-        $messages = LobbyMessage::with('user')
-            ->where('lobby_id', $lobbyId)
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
+        $messages = ChatMessage::where('lobby_id', $lobbyId)
+            ->with('user')
+            ->latest()
+            ->take(50)
             ->get();
 
         return response()->json($messages);
+    }
+
+    public function sendMessage(Request $request, $lobbyId)
+    {
+        $validatedData = $request->validate([
+            'message' => 'required|string|max:60'
+        ]);
+
+        $message = ChatMessage::create([
+            'lobby_id' => $lobbyId,
+            'user_id' => auth()->id(),
+            'message' => $validatedData['message']
+        ]);
+
+        broadcast(new ChatMessageSent($message))->toOthers();
+
+        return response()->json($message, 201);
     }
 }
