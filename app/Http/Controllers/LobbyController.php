@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Lobby;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
-
+use Illuminate\Support\Facades\DB;
 class LobbyController extends Controller
 {
     public function store(Request $request)
@@ -35,6 +35,16 @@ class LobbyController extends Controller
     
         // Create new lobby
         $lobby = Lobby::create($validated);
+
+            // Automatically add the creator to the lobby_user table
+    \DB::table('lobby_user')->insert([
+        'lobby_id' => $lobby->id,
+        'user_id' => $lobby->creator_id,
+        'status' => 'not ready',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
     
         // Return the created lobby
         return response()->json($lobby, 201);
@@ -54,35 +64,24 @@ class LobbyController extends Controller
 
 public function show($id)
 {
-    // Find the lobby with its creator and players using eager loading
-    $lobby = Lobby::with(['creator', 'users'])->findOrFail($id); // Eager load creator and users (players)
+    // Find the lobby with its players
+    $lobby = Lobby::with('players')->find($id);
 
-    // Prepare the lobby details
-    $lobbyDetails = [
-        'id' => $lobby->id,
-        'name' => $lobby->name,
-        'code' => $lobby->code,
-        'max_players' => $lobby->max_players,
-        'current_players' => $lobby->current_players, // Explicitly return current_players
-        'game_ranking' => $lobby->game_ranking,
-        'creator_id' => $lobby->creator_id,
-        'creator' => [
-            'id' => $lobby->creator->id,
-            'name' => $lobby->creator->name,
-        ],
-        'players' => $lobby->users->map(function ($player) use ($lobby) {
-            return [
-                'id' => $player->id,
-                'name' => $player->name,
-                'status' => $player->pivot->status ?? 'Waiting', // Handle player status from the pivot table
-                'is_host' => $player->id === $lobby->creator_id, // Check if the player is the host
-            ];
-        }),
-    ];
+    if (!$lobby) {
+        return response()->json(['message' => 'Lobby not found'], 404);
+    }
 
-    // Return the lobby details to the Inertia.js frontend
+    $lobby = Lobby::with(['players' => function ($query) {
+        $query->select('users.id', 'users.name', 'lobby_user.status'); // Select specific fields
+    }])->find($id);
+
+    // Check if it's an API request or regular Inertia request
+    if (request()->expectsJson()) {
+        return response()->json($lobby);
+    }
+
     return Inertia::render('LobbyPage', [
-        'lobby' => $lobbyDetails,
+        'lobby' => $lobby,
     ]);
 }
 
@@ -114,12 +113,12 @@ public function show($id)
     }
 
 
-public function joinLobby($lobbyId)
+    public function joinLobby($lobbyId)
 {
     // Get the current user
     $user = auth()->user();
     
-    // Find the new lobby
+    // Find the lobby
     $lobby = Lobby::findOrFail($lobbyId);
 
     // Check if the lobby is full
@@ -131,26 +130,14 @@ public function joinLobby($lobbyId)
     \DB::beginTransaction();
 
     try {
-        // First, remove the user from any previous lobby they are part of
-        $previousLobby = \DB::table('lobby_user')->where('user_id', $user->id)->first();
-
-        if ($previousLobby) {
-            // Decrement the current_players count for the previous lobby
-            $previousLobby = Lobby::find($previousLobby->lobby_id);
-            $previousLobby->decrement('current_players');
-        }
-
-        // Increment the current_players count for the new lobby
+        // Increment the current players count
         $lobby->increment('current_players');
 
-        // Remove the user from any old lobby (if they were in one)
-        \DB::table('lobby_user')->where('user_id', $user->id)->delete();
-
-        // Add the user to the new lobby_user table
+        // Add the user to the lobby_user table
         \DB::table('lobby_user')->insert([
             'lobby_id' => $lobby->id,
             'user_id' => $user->id,
-            'status' => 'waiting',  // Default status, can be updated later based on game progress
+            'status' => 'not ready',  // Default status, can be updated later based on game progress
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -165,63 +152,126 @@ public function joinLobby($lobbyId)
         return response()->json(['message' => 'Failed to join the lobby'], 500);
     }
 }
+public function leaveLobby($lobbyId)
+{
+    // Get the current user
+    $user = auth()->user();
+
+    // Find the lobby
+    $lobby = Lobby::findOrFail($lobbyId);
+
+    // Check if the user is in the lobby
+    $userInLobby = \DB::table('lobby_user')
+        ->where('lobby_id', $lobby->id)
+        ->where('user_id', $user->id)
+        ->exists();
+
+    if (!$userInLobby) {
+        return response()->json(['message' => 'You are not part of this lobby'], 400);
+    }
+
+    // Start a transaction to ensure both operations succeed
+    \DB::beginTransaction();
+
+    try {
+        // Decrement the current players count
+        $lobby->decrement('current_players');
+
+        // Remove the user from the lobby_user table
+        \DB::table('lobby_user')
+            ->where('lobby_id', $lobby->id)
+            ->where('user_id', $user->id)
+            ->delete();
+
+        // Check if the current user is the creator of the lobby
+        if ($lobby->creator_id === $user->id) {
+            // Delete the lobby if the creator leaves
+            $lobby->delete();
+        }
+
+        // Commit the transaction
+        \DB::commit();
+
+        return response()->json(['message' => 'Successfully left the lobby'], 200);
+    } catch (\Exception $e) {
+        // Rollback the transaction if something goes wrong
+        \DB::rollBack();
+        return response()->json(['message' => 'Failed to leave the lobby'], 500);
+    }
+}
+
+public function toggleReadyStatus($lobbyId)
+{
+    // Get the current user
+    $user = auth()->user();
+
+    if (!$user) {
+        return response()->json(['message' => 'User not authenticated'], 401);
+    }
+
+    // Find the lobby
+    $lobby = Lobby::findOrFail($lobbyId);
+
+    // Check if the user is in the lobby
+    $lobbyUser = DB::table('lobby_user')
+        ->where('lobby_id', $lobby->id)
+        ->where('user_id', $user->id)
+        ->first();
+
+    if (!$lobbyUser) {
+        return response()->json(['message' => 'You are not in this lobby'], 400);
+    }
+
+    // Toggle the user's ready status
+    $newStatus = $lobbyUser->status === 'ready' ? 'not ready' : 'ready';
+
+    try {
+        DB::table('lobby_user')
+            ->where('lobby_id', $lobby->id)
+            ->where('user_id', $user->id)
+            ->update([
+                'status' => $newStatus,
+                'updated_at' => now()
+            ]);
+
+        return response()->json([
+            'message' => 'Ready status updated',
+            'status' => $newStatus
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Failed to update ready status',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
 
 
-    public function leaveLobby($lobbyId)
+    public function startGame($lobbyId)
     {
         // Get the current user
         $user = auth()->user();
-        
+
         // Find the lobby
         $lobby = Lobby::findOrFail($lobbyId);
 
-        // Start a transaction to ensure data consistency
-        \DB::beginTransaction();
-
-        try {
-            // Remove the user from the lobby_user pivot table
-            $removedRows = \DB::table('lobby_user')
-                ->where('lobby_id', $lobby->id)
-                ->where('user_id', $user->id)
-                ->delete();
-
-            // Decrement the current players count
-            $lobby->decrement('current_players');
-
-            // If the lobby becomes empty, you might want to delete the lobby
-            // Alternatively, you could check if the current user was the creator
-            if ($lobby->creator_id === $user->id) {
-                // If the creator leaves, you might want to choose a new creator 
-                // or mark the lobby for deletion
-                $nextCreator = \DB::table('lobby_user')
-                    ->where('lobby_id', $lobby->id)
-                    ->first();
-
-                if ($nextCreator) {
-                    $lobby->creator_id = $nextCreator->user_id;
-                    $lobby->save();
-                } else {
-                    // If no other players, delete the lobby
-                    $lobby->delete();
-                }
-            }
-
-            // Commit the transaction
-            \DB::commit();
-
-            return response()->json([
-                'message' => 'Successfully left the lobby',
-                'removedRows' => $removedRows
-            ], 200);
-        } catch (\Exception $e) {
-            // Rollback the transaction if something goes wrong
-            \DB::rollBack();
-            return response()->json([
-                'message' => 'Failed to leave the lobby',
-                'error' => $e->getMessage()
-            ], 500);
+        // Ensure only the lobby creator can start the game
+        if ($lobby->creator_id !== $user->id) {
+            return response()->json(['message' => 'Only the lobby creator can start the game'], 403);
         }
+
+        // Check if all players are ready
+        $playersStatus = DB::table('lobby_user')
+            ->where('lobby_id', $lobby->id)
+            ->pluck('status');
+
+        if ($playersStatus->contains('not ready')) {
+            return response()->json(['message' => 'Not all players are ready'], 400);
+        }
+
+        // Start a transaction to create the game
+        DB::beginTransaction();
     }
 
 
