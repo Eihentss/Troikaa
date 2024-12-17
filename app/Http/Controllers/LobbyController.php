@@ -8,10 +8,17 @@ use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use App\Models\ChatMessage; // Correct namespace
+use App\Events\ChatMessageSent; // Add this import
+
 class LobbyController extends Controller
 {
     public function store(Request $request)
     {
+
+            $user = auth()->user();
+
+            Lobby::where('creator_id', $user->id)->delete();
+
         // Validate the request with new configuration options
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -33,6 +40,7 @@ class LobbyController extends Controller
         $validated['is_private'] = $validated['is_private'] ?? false;
         $validated['game_ranking'] = $validated['game_ranking'] ?? 'unranked';
         $validated['round_number'] = 0;
+        $validated['creator_id'] = $user->id;
     
         // Create new lobby
         $lobby = Lobby::create($validated);
@@ -51,17 +59,22 @@ class LobbyController extends Controller
         return response()->json($lobby, 201);
     }
 
-    public function index()
-    {
-        // Retrieve lobbies with their creators, ordered by most recent first
-        $lobbies = Lobby::with('creator')
-            ->orderBy('created_at', 'desc')
-            ->paginate(9); // Adjusted to match the grid layout
+public function index()
+{
+    $user = auth()->user();
 
-        return Inertia::render('LobbiesIndex', [
-            'lobbies' => $lobbies,
-        ]);
-    }
+    $lobbies = Lobby::with(['creator', 'players'])
+        ->orderBy('created_at', 'desc')
+        ->paginate(9)
+        ->through(function ($lobby) use ($user) {
+            $lobby->is_current_user_in_lobby = $lobby->players->contains('id', $user->id);
+            return $lobby;
+        });
+
+    return Inertia::render('LobbiesIndex', [
+        'lobbies' => $lobbies,
+    ]);
+}
 
 public function show($id)
 {
@@ -114,13 +127,26 @@ public function show($id)
     }
 
 
-    public function joinLobby($lobbyId)
+public function joinLobby($lobbyId)
 {
     // Get the current user
     $user = auth()->user();
     
     // Find the lobby
     $lobby = Lobby::findOrFail($lobbyId);
+
+    // Check if the user is already in the lobby
+    $userAlreadyInLobby = \DB::table('lobby_user')
+        ->where('lobby_id', $lobby->id)
+        ->where('user_id', $user->id)
+        ->exists();
+
+    if ($userAlreadyInLobby) {
+        return response()->json([
+            'message' => 'You are already a member of this lobby',
+            'status' => 'error'
+        ], 400);
+    }
 
     // Check if the lobby is full
     if ($lobby->current_players >= $lobby->max_players) {
@@ -138,7 +164,7 @@ public function show($id)
         \DB::table('lobby_user')->insert([
             'lobby_id' => $lobby->id,
             'user_id' => $user->id,
-            'status' => 'not ready',  // Default status, can be updated later based on game progress
+            'status' => 'not ready',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -150,7 +176,10 @@ public function show($id)
     } catch (\Exception $e) {
         // Rollback the transaction if something goes wrong
         \DB::rollBack();
-        return response()->json(['message' => 'Failed to join the lobby'], 500);
+        return response()->json([
+            'message' => 'Failed to join the lobby', 
+            'error' => $e->getMessage()
+        ], 500);
     }
 }
 public function leaveLobby($lobbyId)
@@ -200,6 +229,22 @@ public function leaveLobby($lobbyId)
         return response()->json(['message' => 'Failed to leave the lobby'], 500);
     }
 }
+
+
+public function checkUserInLobby($lobbyId)
+{
+    $user = auth()->user();
+    
+    $userInLobby = \DB::table('lobby_user')
+        ->where('lobby_id', $lobbyId)
+        ->where('user_id', $user->id)
+        ->exists();
+
+    return response()->json([
+        'is_in_lobby' => $userInLobby
+    ]);
+}
+
 
 public function toggleReadyStatus($lobbyId)
 {
@@ -285,8 +330,9 @@ public function toggleReadyStatus($lobbyId)
         return response()->json($messages);
     }
 
-    public function sendMessage(Request $request, $lobbyId)
-    {
+public function sendMessage(Request $request, $lobbyId)
+{
+    try {
         $validatedData = $request->validate([
             'message' => 'required|string|max:60'
         ]);
@@ -297,9 +343,16 @@ public function toggleReadyStatus($lobbyId)
             'message' => $validatedData['message']
         ]);
 
-        broadcast(new ChatMessageSent($message))->toOthers();
+        broadcast(new \App\Events\ChatMessageSent($message))->toOthers();
 
         return response()->json($message, 201);
+    } catch (\Exception $e) {
+        \Log::error('Chat message error: ' . $e->getMessage());
+        return response()->json([
+            'message' => 'Error sending message',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
 }

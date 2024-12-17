@@ -42,7 +42,7 @@ Route::middleware('auth')->group(function () {
 
 
 
-
+    Route::get('/lobbies/{lobbyId}/check-membership', [LobbyController::class, 'checkUserInLobby']);
     Route::get('/api/lobbies/{lobby}/chat-history', [LobbyController::class, 'getChatHistory']);
     Route::post('/api/lobbies/{lobby}/chat', [LobbyController::class, 'sendMessage']);
 

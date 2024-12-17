@@ -58,6 +58,16 @@ export default function LobbiesIndex({ auth, lobbies }) {
         }
     };
 
+    const handleJoinBack = async (e, lobbyId) => {
+    try {
+        // Redirect directly to the lobby page if already a member
+        window.location.href = '/api/lobbies/' + lobbyId;
+    } catch (error) {
+        console.error('Error joining back lobby:', error);
+    }
+};
+
+
     const getLobbyStatusColor = (status) => {
         switch(status) {
             case 'waiting': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
@@ -241,17 +251,26 @@ export default function LobbiesIndex({ auth, lobbies }) {
                                     
                                     <div className="flex justify-between items-center mt-4">
                                         <motion.button
-                                            onClick={(e) => handleJoinLobby(e, lobby.id)}
-                                            disabled={lobby.current_players >= lobby.max_players}  
-                                            className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                                                lobby.current_players >= lobby.max_players  
-                                                    ? 'bg-red-500 text-white cursor-not-allowed opacity-70'  
+                                        onClick={(e) => 
+                                            lobby.is_current_user_in_lobby 
+                                                ? handleJoinBack(e, lobby.id) 
+                                                : handleJoinLobby(e, lobby.id)
+                                        }
+                                        disabled={!lobby.is_current_user_in_lobby && lobby.current_players >= lobby.max_players}  
+                                        className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-all ${
+                                            !lobby.is_current_user_in_lobby && lobby.current_players >= lobby.max_players
+                                                ? 'bg-red-500 text-white cursor-not-allowed opacity-70'  
+                                                : lobby.is_current_user_in_lobby
+                                                    ? 'bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700'
                                                     : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700'  
-                                            }`}
-                                        >
-                                            {lobby.current_players >= lobby.max_players ? 'Lobby Full' : 'Join Lobby'}  
-                                        </motion.button>
-
+                                        }`}
+                                    >
+                                        {!lobby.is_current_user_in_lobby && lobby.current_players >= lobby.max_players 
+                                            ? 'Lobby Full' 
+                                            : lobby.is_current_user_in_lobby 
+                                                ? 'Join Back' 
+                                                : 'Join Lobby'}  
+                                    </motion.button>
                                         <span className="text-xs text-slate-400">
                                             {new Date(lobby.created_at).toLocaleString()}
                                         </span>

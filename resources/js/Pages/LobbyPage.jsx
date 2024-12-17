@@ -39,13 +39,13 @@ export default function LobbyPage({ lobby, auth }) {
         };
 
         fetchPlayers();
-        const intervalId = setInterval(fetchPlayers, 55555000);
+        const intervalId = setInterval(fetchPlayers, 5000);
 
         return () => clearInterval(intervalId);
     }, [lobby.id, auth.user.id]);
 
     useEffect(() => {
-        const intervalId = setInterval(handleRefresh, 2222222); // Refresh every 2 seconds
+        const intervalId = setInterval(handleRefresh, 2000); // Refresh every 2 seconds
 
         return () => {
             clearInterval(intervalId); // Cleanup on component unmount
@@ -109,7 +109,36 @@ const toggleReadyStatus = async () => {
                 console.error('Error starting game:', error);
             }
     };
+    const textVariants = {
+        hidden: { opacity: 0, x: -20 },
+        visible: { 
+            opacity: 1, 
+            x: 0,
+            transition: { 
+                duration: 0.5,
+                type: "spring",
+                stiffness: 100 
+            }
+        }
+    };
 
+    const symbolVariants = {
+        initial: { scale: 0, rotate: -180 },
+        animate: { 
+            scale: 1, 
+            rotate: 0,
+            transition: { 
+                type: "spring", 
+                stiffness: 300, 
+                damping: 10 
+            }
+        },
+        hover: { 
+            scale: 1.2,
+            rotate: 360,
+            transition: { duration: 0.3 }
+        }
+    };
     return (
         
         <motion.div 
@@ -122,25 +151,51 @@ const toggleReadyStatus = async () => {
                 <Head title={`Lobby`} />
 
                 {/* Lobby Header */}
-                <motion.div 
+ <motion.div 
                     initial={{ y: -50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     className="bg-white border border-gray-100 rounded-2xl shadow-xl p-6 mb-8"
                 >
                     <div className="flex justify-between items-center">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                            <motion.h1 
+                                variants={textVariants}
+                                initial="hidden"
+                                animate="visible"
+                                className="text-3xl font-bold text-gray-900 flex items-center"
+                            >
                                 {lobby.name}
                                 {lobby.game_ranking === 'ranked' && (
-                                    <Trophy className="ml-2 text-yellow-500" />
+                                    <motion.div 
+                                        variants={symbolVariants}
+                                        initial="initial"
+                                        animate="animate"
+                                        whileHover="hover"
+                                        className="ml-2"
+                                    >
+                                        <Trophy className="text-yellow-500" />
+                                    </motion.div>
                                 )}
-                            </h1>
-                            <div className="mt-2 flex items-center space-x-2">
-                                <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
+                            </motion.h1>
+                            <motion.div 
+                                variants={textVariants}
+                                initial="hidden"
+                                animate="visible"
+                                className="mt-2 flex items-center space-x-2"
+                            >
+                                <motion.span 
+                                    variants={symbolVariants}
+                                    initial="initial"
+                                    animate="animate"
+                                    className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium"
+                                >
                                     Lobby Code: {lobby.code}
-                                </span>
+                                </motion.span>
                                 <motion.button 
-                                    whileHover={{ scale: 1.1 }}
+                                    variants={symbolVariants}
+                                    initial="initial"
+                                    animate="animate"
+                                    whileHover="hover"
                                     onClick={copyLobbyCode}
                                     className="text-gray-500 hover:text-blue-600"
                                 >
@@ -150,9 +205,12 @@ const toggleReadyStatus = async () => {
                                         <Copy className="w-5 h-5" />
                                     )}
                                 </motion.button>
-                            </div>
+                            </motion.div>
                         </div>
                         <motion.button 
+                            initial="initial"
+                            animate="animate"
+                            whileHover="hover"
                             whileTap={{ scale: 0.95 }}
                             onClick={leaveLobby}
                             className="flex items-center space-x-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl hover:bg-red-100 transition-colors"
@@ -261,7 +319,12 @@ const toggleReadyStatus = async () => {
                                 Start Game
                             </motion.button>
                         )}
-                                        <ChatComponent lobby={lobby} auth={auth} />
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-transparent z-50">
+                <div className="max-w-6xl mx-auto">
+                    <ChatComponent lobby={lobby} auth={auth} />
+                </div>
+            </div>
+
 
                     </motion.div>
                 </div>

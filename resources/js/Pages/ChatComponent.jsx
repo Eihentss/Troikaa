@@ -8,60 +8,70 @@ const ChatComponent = ({ lobby, auth }) => {
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef(null);
 
-    // Configure Laravel Echo
+
     useEffect(() => {
+        // Inicializējiet Pusher un Laravel Echo
         window.Pusher = Pusher;
         window.Echo = new Echo({
             broadcaster: 'pusher',
             key: import.meta.env.VITE_PUSHER_APP_KEY,
             cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-            forceTLS: true
+            forceTLS: true,
+            // Pievienojiet autentifikācijas parametrus
+            auth: {
+                headers: {
+                    Authorization: 'Bearer ' + auth.token // Ja izmantojat autentifikāciju
+                }
+            }
         });
-
-        // Subscribe to lobby chat channel
-        window.Echo.channel(`lobby-chat-${lobby.id}`)
-            .listen('ChatMessageSent', (e) => {
-                setMessages(prevMessages => [...prevMessages, e]);
-            });
-
-        // Fetch chat history
-        const fetchChatHistory = async () => {
+    const fetchChatHistory = async () => {
             try {
                 const response = await axios.get(`/api/lobbies/${lobby.id}/chat-history`);
-                setMessages(response.data.reverse());
+                setMessages(response.data);
             } catch (error) {
                 console.error('Error fetching chat history:', error);
             }
         };
 
         fetchChatHistory();
+        // Pieslēdzieties kanālam
+        const channel = window.Echo.channel(`lobby-chat-${lobby.id}`);
+        
+        // Klausieties notikumus
+        channel.listen('ChatMessageSent', (e) => {
+            console.log('Received message:', e);
+            setMessages(prevMessages => [...prevMessages, e.message]);
+        });
 
-        // Cleanup on component unmount
+        // Noņemiet klausīšanos komponents nomontēšanas laikā
         return () => {
             window.Echo.leave(`lobby-chat-${lobby.id}`);
         };
     }, [lobby.id]);
-
-    // Auto-scroll to bottom of messages
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
         try {
-            // Pievienojiet autorizācijas žetonu
-            await axios.post(`/api/lobbies/${lobby.id}/chat`, { message: newMessage }, {});
+            await axios.post(`/api/lobbies/${lobby.id}/chat`, 
+                { message: newMessage }, 
+                { 
+                    headers: {
+                        'Authorization': `Bearer ${auth.token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
             setNewMessage('');
         } catch (error) {
             console.error('Error sending message:', error.response?.data || error);
+            // Optionally show user-friendly error message
         }
     };
 
-    return (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-lg p-6 h-[300px] flex flex-col">
+     return (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-lg p-4 max-h-[250px] flex flex-col">
             <div className="flex-grow overflow-y-auto mb-4 space-y-3 pr-2">
                 {messages.map((msg, index) => (
                     <div 
