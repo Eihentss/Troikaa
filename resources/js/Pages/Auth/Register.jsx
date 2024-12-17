@@ -4,155 +4,133 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-import React, { useState } from 'react';
-
-export default function CardGameRegister() {
-    const [formData, setFormData] = useState({
-        username: '',
+export default function Register() {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        name: '',
         email: '',
         password: '',
         password_confirmation: '',
     });
-    const [errors, setErrors] = useState({});
-    const [processing, setProcessing] = useState(false);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    const submit = async (e) => {
+    const submit = (e) => {
         e.preventDefault();
-        setProcessing(true);
 
-        const newErrors = {};
-        if (formData.password !== formData.password_confirmation) {
-            newErrors.password_confirmation = 'Passwords do not match';
-        }
-        
-        setErrors(newErrors);
-        setProcessing(false);
-
-        if (Object.keys(newErrors).length === 0) {
-            alert('Registration submitted!');
-        }
+        post(route('register'), {
+            onFinish: () => reset('password', 'password_confirmation'),
+        });
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Card-like background elements */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                <div className="absolute top-[-50px] left-[-50px] transform rotate-45 w-96 h-96 bg-red-100 opacity-30 rounded-3xl"></div>
-                <div className="absolute bottom-[-50px] right-[-50px] transform -rotate-45 w-96 h-96 bg-black opacity-10 rounded-3xl"></div>
-            </div>
-
-            <div className="w-full max-w-md z-10">
-                <div className="bg-white shadow-2xl rounded-2xl border-2 border-gray-200 overflow-hidden relative p-8">
-                    
-
-                    {/* Registration Content */}
-                    <div className="p-8 text-center relative z-10">
-                        <h2 className="text-4xl font-extrabold text-black mb-6">
-                            Join the Game
-                        </h2>
-
-                        <form onSubmit={submit} className="space-y-6">
-                            <div>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    placeholder="Username"
-                                    required
-                                    className="w-full px-4 py-3 border-2 border-black rounded-lg 
-                                        focus:outline-none focus:ring-2 focus:ring-black"
-                                />
-                                {errors.username && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                        {errors.username}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    placeholder="Email Address"
-                                    required
-                                    className="w-full px-4 py-3 border-2 border-black rounded-lg 
-                                        focus:outline-none focus:ring-2 focus:ring-black"
-                                />
-                                {errors.email && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                        {errors.email}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    placeholder="Password"
-                                    required
-                                    className="w-full px-4 py-3 border-2 border-black rounded-lg 
-                                        focus:outline-none focus:ring-2 focus:ring-black"
-                                />
-                                {errors.password && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                        {errors.password}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <input
-                                    type="password"
-                                    name="password_confirmation"
-                                    value={formData.password_confirmation}
-                                    onChange={handleChange}
-                                    placeholder="Confirm Password"
-                                    required
-                                    className="w-full px-4 py-3 border-2 border-black rounded-lg 
-                                        focus:outline-none focus:ring-2 focus:ring-black"
-                                />
-                                {errors.password_confirmation && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                        {errors.password_confirmation}
-                                    </p>
-                                )}
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="w-full py-4 bg-black text-white font-bold rounded-lg 
-                                    hover:bg-gray-800 transition-colors
-                                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
-                            >
-                                {processing ? 'Registering...' : 'Deal Me In'}
-                            </button>
-
-                            <div className="text-center mt-4">
-                                <a 
-                                    href="/login" 
-                                    className="text-sm text-gray-600 hover:text-black transition-colors"
-                                >
-                                    Already have an account? Log in
-                                </a>
-                            </div>
-                        </form>
-                    </div>
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <Head title="Register" />
+            <div className="w-full max-w-md space-y-8 bg-white shadow-xl rounded-xl p-8 border border-gray-200">
+                <div className="text-center">
+                    <h2 className="text-3xl font-extrabold text-gray-900">
+                        Create your account
+                    </h2>
                 </div>
+
+                <form onSubmit={submit} className="space-y-6">
+                    {/* Name Field */}
+                    <div>
+                        <InputLabel htmlFor="name" value="Name" />
+                        <TextInput
+                            id="name"
+                            name="name"
+                            value={data.name}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                                focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                            autoComplete="name"
+                            isFocused={true}
+                            onChange={(e) => setData('name', e.target.value)}
+                            required
+                            placeholder="Enter your full name"
+                        />
+                        <InputError message={errors.name} className="mt-2" />
+                    </div>
+
+                    {/* Email Field */}
+                    <div>
+                        <InputLabel htmlFor="email" value="Email" />
+                        <TextInput
+                            id="email"
+                            type="email"
+                            name="email"
+                            value={data.email}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                                focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                            autoComplete="username"
+                            onChange={(e) => setData('email', e.target.value)}
+                            required
+                            placeholder="Enter your email"
+                        />
+                        <InputError message={errors.email} className="mt-2" />
+                    </div>
+
+                    {/* Password Field */}
+                    <div>
+                        <InputLabel htmlFor="password" value="Password" />
+                        <TextInput
+                            id="password"
+                            type="password"
+                            name="password"
+                            value={data.password}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                                focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                            autoComplete="new-password"
+                            onChange={(e) => setData('password', e.target.value)}
+                            required
+                            placeholder="Enter your password"
+                        />
+                        <InputError message={errors.password} className="mt-2" />
+                    </div>
+
+                    {/* Password Confirmation Field */}
+                    <div>
+                        <InputLabel
+                            htmlFor="password_confirmation"
+                            value="Confirm Password"
+                        />
+                        <TextInput
+                            id="password_confirmation"
+                            type="password"
+                            name="password_confirmation"
+                            value={data.password_confirmation}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                                focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                            autoComplete="new-password"
+                            onChange={(e) =>
+                                setData('password_confirmation', e.target.value)
+                            }
+                            required
+                            placeholder="Confirm your password"
+                        />
+                        <InputError
+                            message={errors.password_confirmation}
+                            className="mt-2"
+                        />
+                    </div>
+
+                    {/* Submit and Login Link */}
+                    <div className="flex items-center justify-between">
+                        <Link
+                            href={route('login')}
+                            className="text-sm font-medium text-gray-600 hover:text-black"
+                        >
+                            Already registered?
+                        </Link>
+
+                        <PrimaryButton
+                            className="py-2 px-4 border border-transparent 
+                                rounded-md shadow-sm text-sm font-medium text-white 
+                                bg-black hover:bg-gray-800 focus:outline-none 
+                                focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                            disabled={processing}
+                        >
+                            {processing ? 'Registering...' : 'Register'}
+                        </PrimaryButton>
+                    </div>
+                </form>
             </div>
         </div>
     );

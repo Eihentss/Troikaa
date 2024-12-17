@@ -5,144 +5,119 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-import React, { useState } from 'react';
-
-export default function CardGameLogin() {
-    const [formData, setFormData] = useState({
+export default function Login({ status, canResetPassword }) {
+    const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
+        remember: false,
     });
-    const [errors, setErrors] = useState({});
-    const [processing, setProcessing] = useState(false);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    const submit = async (e) => {
+    const submit = (e) => {
         e.preventDefault();
-        setProcessing(true);
 
-        const newErrors = {};
-        if (!formData.email) {
-            newErrors.email = 'Email is required';
-        }
-        if (!formData.password) {
-            newErrors.password = 'Password is required';
-        }
-        
-        setErrors(newErrors);
-        setProcessing(false);
-
-        if (Object.keys(newErrors).length === 0) {
-            alert('Login submitted!');
-        }
+        post(route('login'), {
+            onFinish: () => reset('password'),
+        });
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Card-like background elements */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                <div className="absolute top-[-20px] left-[-50px] transform rotate-45 w-96 h-96 bg-red-100 opacity-30 rounded-3xl"></div>
-                <div className="absolute bottom-[-20px] right-[-50px] transform -rotate-45 w-96 h-96 bg-black opacity-10 rounded-3xl"></div>
-            </div>
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <Head title="Log in" />
 
-            <div className="w-full max-w-md z-10">
-                <div className="bg-white shadow-2xl rounded-2xl border-2 border-gray-200 overflow-hidden relative">
-                   
-                    {/* Login Content */}
-                    <div className="p-8 text-center relative z-10">
-                        <h2 className="text-4xl font-extrabold text-black mb-6">
-                            Welcome Back
-                        </h2>
+            <div className="w-full max-w-md space-y-8 bg-white shadow-xl rounded-xl p-8 border border-gray-200">
+                <div className="text-center">
+                    <h1 className="text-3xl font-extrabold text-gray-900">Sign in to your account</h1>
+                    <p className="mt-2 text-sm text-gray-600">Log in to access your account</p>
+                </div>
 
-                        <form onSubmit={submit} className="space-y-6">
-                            <div>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    placeholder="Email Address"
-                                    required
-                                    className="w-full px-4 py-3 border-2 border-black rounded-lg 
-                                        focus:outline-none focus:ring-2 focus:ring-black"
-                                />
-                                {errors.email && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                        {errors.email}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    placeholder="Password"
-                                    required
-                                    className="w-full px-4 py-3 border-2 border-black rounded-lg 
-                                        focus:outline-none focus:ring-2 focus:ring-black"
-                                />
-                                {errors.password && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                        {errors.password}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <input
-                                        id="remember-me"
-                                        name="remember-me"
-                                        type="checkbox"
-                                        className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
-                                    />
-                                    <label 
-                                        htmlFor="remember-me" 
-                                        className="ml-2 block text-sm text-gray-900"
-                                    >
-                                        Remember me
-                                    </label>
-                                </div>
-
-                                <div>
-                                    <a 
-                                        href="/forgot-password" 
-                                        className="text-sm text-gray-600 hover:text-black"
-                                    >
-                                        Forgot password?
-                                    </a>
-                                </div>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="w-full py-4 bg-black text-white font-bold rounded-lg 
-                                    hover:bg-gray-800 transition-colors
-                                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
-                            >
-                                {processing ? 'Logging in...' : 'Draw Your Hand'}
-                            </button>
-
-                            <div className="text-center mt-4">
-                                <a 
-                                    href="/register" 
-                                    className="text-sm text-gray-600 hover:text-black transition-colors"
-                                >
-                                    Need an account? Join the Game
-                                </a>
-                            </div>
-                        </form>
+                {status && (
+                    <div className="my-4 rounded-lg bg-green-100 p-3 text-sm font-medium text-green-600 shadow">
+                        {status}
                     </div>
+                )}
+
+                <form onSubmit={submit} className="space-y-6">
+                    {/* Email Field */}
+                    <div>
+                        <InputLabel htmlFor="email" value="Email Address" />
+                        <TextInput
+                            id="email"
+                            type="email"
+                            name="email"
+                            value={data.email}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                                focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                            autoComplete="username"
+                            isFocused={true}
+                            onChange={(e) => setData('email', e.target.value)}
+                            placeholder="Enter your email"
+                        />
+                        <InputError message={errors.email} className="mt-2" />
+                    </div>
+
+                    {/* Password Field */}
+                    <div>
+                        <InputLabel htmlFor="password" value="Password" />
+                        <TextInput
+                            id="password"
+                            type="password"
+                            name="password"
+                            value={data.password}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm 
+                                focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                            autoComplete="current-password"
+                            onChange={(e) => setData('password', e.target.value)}
+                            placeholder="Enter your password"
+                        />
+                        <InputError message={errors.password} className="mt-2" />
+                    </div>
+
+                    {/* Remember Me */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <Checkbox
+                                id="remember"
+                                name="remember"
+                                checked={data.remember}
+                                onChange={(e) => setData('remember', e.target.checked)}
+                                className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
+                            />
+                            <label htmlFor="remember" className="ml-2 block text-sm text-gray-900">
+                                Remember me
+                            </label>
+                        </div>
+
+                        {/* Forgot Password Link */}
+                        {canResetPassword && (
+                            <Link
+                                href={route('password.request')}
+                                className="text-sm font-medium text-gray-600 hover:text-black"
+                            >
+                                Forgot your password?
+                            </Link>
+                        )}
+                    </div>
+
+                    {/* Submit Button */}
+                    <div>
+                        <PrimaryButton
+                            className="w-full flex justify-center py-2 px-4 border border-transparent 
+                                rounded-md shadow-sm text-sm font-medium text-white 
+                                bg-black hover:bg-gray-800 focus:outline-none 
+                                focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                            disabled={processing}
+                        >
+                            {processing ? 'Signing In...' : 'Sign In'}
+                        </PrimaryButton>
+                    </div>
+                </form>
+
+                {/* Sign Up Link */}
+                <div className="mt-6 text-center text-sm text-gray-600">
+                    Don't have an account?{' '}
+                    <Link href={route('register')} className="font-medium text-black hover:text-gray-800">
+                        Register here
+                    </Link>
                 </div>
             </div>
         </div>
