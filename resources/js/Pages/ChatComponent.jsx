@@ -52,10 +52,11 @@ const ChatComponent = ({ lobby, auth }) => {
         if (!newMessage.trim()) return;
 
         try {
-            await axios.post(`/api/lobbies/${lobby.id}/chat`, { message: newMessage });
+            // Pievienojiet autorizācijas žetonu
+            await axios.post(`/api/lobbies/${lobby.id}/chat`, { message: newMessage }, {});
             setNewMessage('');
         } catch (error) {
-            console.error('Error sending message:', error);
+            console.error('Error sending message:', error.response?.data || error);
         }
     };
 

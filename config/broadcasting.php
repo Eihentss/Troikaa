@@ -35,7 +35,7 @@ return [
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
                 'cluster' => env('PUSHER_APP_CLUSTER'),
-                'host' => 'http://192.54.51.1/', // For local development
+                'host' => 'localhost', // For local development
                 'port' => 3306, // For local WebSocket server
                 'scheme' => 'https',
                 'encrypted' => true,
