@@ -304,18 +304,8 @@ public function startGame($lobbyId)
         ->first();
 
     if ($userInLobby && $userInLobby->status === 'playing') {
-        // Redirect to the game page for players with 'playing' status
-        return Inertia::render('Game', [
-            'lobby' => $lobby,
-            'players' => $lobby->players->map(function ($player) {
-                return [
-                    'id' => $player->id,
-                    'name' => $player->name,
-                    'status' => 'playing'
-                ];
-            }),
-            'is_creator' => $currentUser->id === $lobby->creator_id
-        ]);
+        // Redirect to the game route for players with 'playing' status
+        return redirect()->route('game.show', ['lobbyId' => $lobbyId]);
     }
 
     // Ensure only the creator can start the game
@@ -337,23 +327,9 @@ public function startGame($lobbyId)
         'status' => 'playing'
     ]);
 
-    // Prepare player data
-    $players = $lobby->players->map(function ($player) {
-        return [
-            'id' => $player->id,
-            'name' => $player->name,
-            'status' => 'playing'
-        ];
-    });
-
-    // For the creator, render the Game page
-    return Inertia::render('Game', [
-        'lobby' => $lobby,
-        'players' => $players,
-        'is_creator' => true
-    ]);
+    // Redirect to the game route
+    return redirect()->route('game.show', ['lobbyId' => $lobbyId]);
 }
-
 
 
     public function getChatHistory($lobbyId)
