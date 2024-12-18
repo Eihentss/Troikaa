@@ -368,4 +368,26 @@ public function sendMessage(Request $request, $lobbyId)
     }
 }
 
+public function updateSettings(Request $request, Lobby $lobby)
+{
+    // Ensure the user is the lobby creator
+    if ($lobby->creator_id !== auth()->id()) {
+        return response()->json(['message' => 'You are not the creator of this lobby'], 403);
+    }
+
+    // Validate the incoming request
+    $request->validate([
+        'max_players' => 'required|integer|min:2|max:10',
+        'spectate_allowed' => 'required|boolean',
+        'is_private' => 'required|boolean',
+        'game_ranking' => 'required|in:ranked,unranked',
+    ]);
+
+    // Update lobby settings
+    $lobby->update($request->only(['max_players', 'spectate_allowed', 'is_private', 'game_ranking']));
+
+    return response()->json(['message' => 'Settings updated successfully']);
+}
+
+
 }

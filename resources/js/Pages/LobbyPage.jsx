@@ -13,6 +13,43 @@ export default function LobbyPage({ lobby, auth }) {
     const [isLoading, setIsLoading] = useState(false);
     const [userReadyStatus, setUserReadyStatus] = useState(false);
     const [allPlayersReady, setAllPlayersReady] = useState(false);
+    const [settingsModalOpen, setSettingsModalOpen] = useState(false); // Track modal visibility
+    const [updatedSettings, setUpdatedSettings] = useState({
+        max_players: 4, // Default to 4 players
+        spectate_allowed: lobby.spectate_allowed,
+        is_private: lobby.is_private,
+        game_ranking: lobby.game_ranking
+    });
+
+    const toggleSettingsModal = () => {
+        setSettingsModalOpen(!settingsModalOpen);
+    };
+
+    const handleSettingsChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        
+        // If the field is max_players and the value is greater than 4, limit it to 4
+        if (name === 'max_players' && value > 4) {
+            return; // Prevent updating the value if it's greater than 4
+        }
+    
+        setUpdatedSettings({
+            ...updatedSettings,
+            [name]: type === 'checkbox' ? checked : value
+        });
+    };
+
+    const saveSettings = async () => {
+        try {
+            const response = await axios.post(`/api/lobbies/${lobby.id}/update-settings`, updatedSettings);
+            setSettingsModalOpen(false);
+            // Optionally, you can update the lobby state here after successful update
+            console.log('Settings updated:', response.data);
+        } catch (error) {
+            console.error('Error updating settings:', error);
+        }
+    };
+
     // Fetch participants when the component mounts
     useEffect(() => {
         const fetchPlayers = async () => {
@@ -235,9 +272,76 @@ const toggleReadyStatus = async () => {
                                 whileHover={{ scale: 1.1 }}
                                 className="text-blue-600 hover:bg-blue-50 p-2 rounded-full"
                             >
-                                <Settings className="w-5 h-5" />
+                       <motion.button onClick={toggleSettingsModal} className="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
+                            <Settings className="w-5 h-5" />
+                        </motion.button>    
                             </motion.button>
                         </div>
+                                {settingsModalOpen && (
+                            <div className="fixed inset-0 bg-gray-500 bg-opacity-50 z-50 flex justify-center items-center">
+                                <div className="bg-white p-6 rounded-xl shadow-lg w-1/3">
+                                    <h2 className="text-xl font-semibold mb-4">Lobby Settings</h2>
+                                    <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Max Players</label>
+                                        <input
+                                            type="number"
+                                            name="max_players"
+                                            value={updatedSettings.max_players}
+                                            onChange={handleSettingsChange}
+                                            min="2" // Assuming minimum players is 2
+                                            max="4" // Limit max players to 4
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        />
+                                    </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Allow Spectators</label>
+                                            <input
+                                                type="checkbox"
+                                                name="spectate_allowed"
+                                                checked={updatedSettings.spectate_allowed}
+                                                onChange={handleSettingsChange}
+                                                className="mr-2"
+                                            />
+                                            <span>Allow Spectators</span>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Private Lobby</label>
+                                            <input
+                                                type="checkbox"
+                                                name="is_private"
+                                                checked={updatedSettings.is_private}
+                                                onChange={handleSettingsChange}
+                                                className="mr-2"
+                                            />
+                                            <span>Private Lobby</span>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Game Ranking</label>
+                                            <select
+                                                name="game_ranking"
+                                                value={updatedSettings.game_ranking}
+                                                onChange={handleSettingsChange}
+                                                className="w-full p-2 border border-gray-300 rounded-md"
+                                            >
+                                                <option value="ranked">Ranked</option>
+                                                <option value="unranked">Unranked</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 flex justify-end space-x-4">
+                                        <button onClick={() => setSettingsModalOpen(false)} className="bg-gray-500 text-white px-4 py-2 rounded-md">
+                                            Cancel
+                                        </button>
+                                        <button onClick={saveSettings} className="bg-blue-600 text-white px-4 py-2 rounded-md">
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                             
+                                    
                         <div className="space-y-4">
                             {players.map((player) => (
                                 <motion.div 
