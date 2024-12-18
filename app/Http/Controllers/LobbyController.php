@@ -292,33 +292,70 @@ public function toggleReadyStatus($lobbyId)
     }
 }
 
+public function startGame($lobbyId)
+{
+    $lobby = Lobby::with('players')->findOrFail($lobbyId);
 
+    // Check if the current user is already playing
+    $currentUser = auth()->user();
+    $userInLobby = DB::table('lobby_user')
+        ->where('lobby_id', $lobbyId)
+        ->where('user_id', $currentUser->id)
+        ->first();
 
-    public function startGame($lobbyId)
-    {
-        // Get the current user
-        $user = auth()->user();
-
-        // Find the lobby
-        $lobby = Lobby::findOrFail($lobbyId);
-
-        // Ensure only the lobby creator can start the game
-        if ($lobby->creator_id !== $user->id) {
-            return response()->json(['message' => 'Only the lobby creator can start the game'], 403);
-        }
-
-        // Check if all players are ready
-        $playersStatus = DB::table('lobby_user')
-            ->where('lobby_id', $lobby->id)
-            ->pluck('status');
-
-        if ($playersStatus->contains('not ready')) {
-            return response()->json(['message' => 'Not all players are ready'], 400);
-        }
-
-        // Start a transaction to create the game
-        DB::beginTransaction();
+    if ($userInLobby && $userInLobby->status === 'playing') {
+        // Redirect to the game page for players with 'playing' status
+        return Inertia::render('Game', [
+            'lobby' => $lobby,
+            'players' => $lobby->players->map(function ($player) {
+                return [
+                    'id' => $player->id,
+                    'name' => $player->name,
+                    'status' => 'playing'
+                ];
+            }),
+            'is_creator' => $currentUser->id === $lobby->creator_id
+        ]);
     }
+
+    // Ensure only the creator can start the game
+    if (auth()->id() !== $lobby->creator_id) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    // Update all players' status to playing
+    DB::table('lobby_user')
+        ->where('lobby_id', $lobbyId)
+        ->update([
+            'status' => 'playing',
+            'updated_at' => now()
+        ]);
+
+    // Update lobby game start time
+    $lobby->update([
+        'game_started_at' => now(),
+        'status' => 'playing'
+    ]);
+
+    // Prepare player data
+    $players = $lobby->players->map(function ($player) {
+        return [
+            'id' => $player->id,
+            'name' => $player->name,
+            'status' => 'playing'
+        ];
+    });
+
+    // For the creator, render the Game page
+    return Inertia::render('Game', [
+        'lobby' => $lobby,
+        'players' => $players,
+        'is_creator' => true
+    ]);
+}
+
+
+
     public function getChatHistory($lobbyId)
     {
         $messages = ChatMessage::where('lobby_id', $lobbyId)

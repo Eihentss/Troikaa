@@ -101,13 +101,11 @@ const toggleReadyStatus = async () => {
     };
 
     const startGame = async () => {
-
-            try {
-                const response = await axios.post(`/api/lobbies/${lobby.id}/start`);
-
-            } catch (error) {
-                console.error('Error starting game:', error);
-            }
+        try {
+            await router.visit(`/api/lobbies/${lobby.id}/start-game`);
+        } catch (error) {
+            console.error('Error starting game:', error);
+        }
     };
     const textVariants = {
         hidden: { opacity: 0, x: -20 },
@@ -258,6 +256,7 @@ const toggleReadyStatus = async () => {
                                                 {player.status === 'ready' && <span className="text-green-500">Ready</span>}
                                                 {player.status === 'waiting' && <span className="text-yellow-500">Waiting</span>}
                                                 {player.status === 'not ready' && <span className="text-red-500">Not Ready</span>}
+                                                {player.status === 'playing' && <span className="text-blue-500">Playing</span>}
                                             </p>
                                         </div>
                                     </div>

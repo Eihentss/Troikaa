@@ -10,4 +10,11 @@ export default defineConfig({
         }),
         react(),
     ],
+    server: {
+        host: '0.0.0.0',  // Vai tieši varat ievadīt IP adresi
+        port: 5173,        // Pārliecinieties, ka ports ir atbilstošs
+        hmr: {
+          host: '10.13.54.162',  // Ja nepieciešams, iestatiet HMR host
+        }
+      }
 });

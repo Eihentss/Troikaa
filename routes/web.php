@@ -5,7 +5,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\LobbyController;
-use App\Http\Controllers\ChatController;
+use App\Http\Controllers\GameController;
+
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -38,9 +39,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/lobbies/{lobbyId}/leave', [LobbyController::class, 'leaveLobby']);
     Route::post('/api/lobbies/{lobby}/toggle-ready', [LobbyController::class, 'toggleReadyStatus']);
 
-    Route::post('/api/lobbies/{lobby}/start', [LobbyController::class, 'startGame']);
+    Route::get('/api/lobbies/{lobby}/start-game', [LobbyController::class, 'startGame'])
+    ->name('lobby.startGame')
+    ->middleware(['auth', 'verified']);
 
-
+    Route::get('/game/{lobbyId}', [GameController::class, 'show'])
+    ->name('game.show')
+    ->middleware(['auth', 'verified']);
 
     Route::get('/lobbies/{lobbyId}/check-membership', [LobbyController::class, 'checkUserInLobby']);
     Route::get('/api/lobbies/{lobby}/chat-history', [LobbyController::class, 'getChatHistory']);
