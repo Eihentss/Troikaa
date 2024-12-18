@@ -9,45 +9,45 @@ const ChatComponent = ({ lobby, auth }) => {
     const messagesEndRef = useRef(null);
 
 
-    useEffect(() => {
-        // Inicializējiet Pusher un Laravel Echo
-        window.Pusher = Pusher;
-        window.Echo = new Echo({
-            broadcaster: 'pusher',
-            key: import.meta.env.VITE_PUSHER_APP_KEY,
-            cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-            forceTLS: true,
-            // Pievienojiet autentifikācijas parametrus
-            auth: {
-                headers: {
-                    Authorization: 'Bearer ' + auth.token // Ja izmantojat autentifikāciju
-                }
-            }
-        });
-    const fetchChatHistory = async () => {
-            try {
-                const response = await axios.get(`/api/lobbies/${lobby.id}/chat-history`);
-                setMessages(response.data);
-            } catch (error) {
-                console.error('Error fetching chat history:', error);
-            }
-        };
+    // useEffect(() => {
+    //     // Inicializējiet Pusher un Laravel Echo
+    //     window.Pusher = Pusher;
+    //     window.Echo = new Echo({
+    //         broadcaster: 'pusher',
+    //         key: import.meta.env.VITE_PUSHER_APP_KEY,
+    //         cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+    //         forceTLS: true,
+    //         // Pievienojiet autentifikācijas parametrus
+    //         auth: {
+    //             headers: {
+    //                 Authorization: 'Bearer ' + auth.token // Ja izmantojat autentifikāciju
+    //             }
+    //         }
+    //     });
+    // const fetchChatHistory = async () => {
+    //         try {
+    //             const response = await axios.get(`/api/lobbies/${lobby.id}/chat-history`);
+    //             setMessages(response.data);
+    //         } catch (error) {
+    //             console.error('Error fetching chat history:', error);
+    //         }
+    //     };
 
-        fetchChatHistory();
-        // Pieslēdzieties kanālam
-        const channel = window.Echo.channel(`lobby-chat-${lobby.id}`);
+    //     fetchChatHistory();
+    //     // Pieslēdzieties kanālam
+    //     const channel = window.Echo.channel(`lobby-chat-${lobby.id}`);
         
-        // Klausieties notikumus
-        channel.listen('ChatMessageSent', (e) => {
-            console.log('Received message:', e);
-            setMessages(prevMessages => [...prevMessages, e.message]);
-        });
+    //     // Klausieties notikumus
+    //     channel.listen('ChatMessageSent', (e) => {
+    //         console.log('Received message:', e);
+    //         setMessages(prevMessages => [...prevMessages, e.message]);
+    //     });
 
-        // Noņemiet klausīšanos komponents nomontēšanas laikā
-        return () => {
-            window.Echo.leave(`lobby-chat-${lobby.id}`);
-        };
-    }, [lobby.id]);
+    //     // Noņemiet klausīšanos komponents nomontēšanas laikā
+    //     return () => {
+    //         window.Echo.leave(`lobby-chat-${lobby.id}`);
+    //     };
+    // }, [lobby.id]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
